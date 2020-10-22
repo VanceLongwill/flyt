@@ -5,13 +5,15 @@ import (
 	"strings"
 	"testing"
 
-	// "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
 	expectedUsageMessage = `Usage of bin:
-  -v	verbose logging
+  -n int
+    	find nearest
+  -s string
+    	comma separated values for the chart
 `
 )
 
@@ -22,17 +24,32 @@ func TestRun(t *testing.T) {
 		assert.Equal(t, expectedUsageMessage, stderr.String())
 		assert.Error(t, err, "should return an error")
 	})
-	t.Run("runs without errors with minimal flags", func(t *testing.T) {
+	t.Run("runs the correct answer without errors with minimal flags", func(t *testing.T) {
 		stderr := new(strings.Builder)
 		stdout := new(strings.Builder)
-		err := run([]string{"bin", "-v"}, stdout, stderr)
+		err := run([]string{"bin", "-s", "1,2,3", "-n", "4"}, stdout, stderr)
 		assert.Empty(t, stderr.Len(), "nothing should be written to stderr")
-		assert.Equal(t, "Verbose logging enabled\n", stdout.String())
+		assert.Equal(t, "Nearest temp: 3", stdout.String())
 		assert.NoError(t, err)
 	})
-
-	// t.Run("tests a mocked interface", func(t *testing.T) {
-	// 	ctrl := gomock.NewController(t)
-	// 	defer ctrl.Finish()
-	// })
+	t.Run("runs without errors with minimal flags and whitespace inbetween values", func(t *testing.T) {
+		stderr := new(strings.Builder)
+		stdout := new(strings.Builder)
+		err := run([]string{"bin", "-s", "1, 2, 3", "-n", "4"}, stdout, stderr)
+		assert.Empty(t, stderr.Len(), "nothing should be written to stderr")
+		assert.Equal(t, "Nearest temp: 3", stdout.String())
+		assert.NoError(t, err)
+	})
+	t.Run("returns an error when the set of chart values is empty", func(t *testing.T) {
+		stderr := new(strings.Builder)
+		stdout := new(strings.Builder)
+		err := run([]string{"bin", "-s", "", "-n", "4"}, stdout, stderr)
+		assert.Error(t, err, "should return an error")
+	})
+	t.Run("returns an error when a set value is not a valid integer", func(t *testing.T) {
+		stderr := new(strings.Builder)
+		stdout := new(strings.Builder)
+		err := run([]string{"bin", "-s", "1,2,*", "-n", "4"}, stdout, stderr)
+		assert.Error(t, err, "should return an error")
+	})
 }

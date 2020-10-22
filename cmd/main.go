@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"strings"
+
+	"github.com/vancelongwill/flyt"
 )
 
 var (
@@ -17,7 +21,8 @@ func run(args []string, stdout io.Writer, stderr io.Writer) error {
 	flags := flag.NewFlagSet(args[0], flag.ExitOnError)
 	flags.SetOutput(stderr)
 	var (
-		verbose = flags.Bool("v", false, "verbose logging")
+		nearest = flags.Int("n", 0, "find nearest")
+		set     = flags.String("s", "", "comma separated values for the chart")
 	)
 
 	if err := flags.Parse(args[1:]); err != nil {
@@ -29,9 +34,29 @@ func run(args []string, stdout io.Writer, stderr io.Writer) error {
 		return ErrNotEnoughArgs
 	}
 
-	if *verbose {
-		fmt.Fprintln(stdout, "Verbose logging enabled")
+	if nearest == nil || set == nil {
+		return ErrNotEnoughArgs
 	}
+
+	setStrings := strings.Split(*set, ",")
+
+	if len(setStrings) == 0 {
+		return errors.New("set must contain at least one temperature value")
+	}
+
+	var tempSet []int
+
+	for i, s := range setStrings {
+		val, err := strconv.Atoi(strings.TrimSpace(s))
+		if err != nil {
+			return fmt.Errorf("unable to parse value at index = '%d': %w", i, err)
+		}
+		tempSet = append(tempSet, val)
+	}
+
+	chart := flyt.NewChart(tempSet...)
+
+	fmt.Fprintf(stdout, "Nearest temp: %d", chart.NearestTemp(*nearest))
 
 	return nil
 }
